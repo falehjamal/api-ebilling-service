@@ -8,7 +8,8 @@ it('mengembalikan data warga saat token valid', function () {
         [
             'username' => 'warga1',
             'password' => 'x',
-            'status' => 'aktif',
+            'level' => 'Pelanggan',
+            'status' => '1',
             'account' => '1114',
             'nama_warga' => 'Budi',
         ],

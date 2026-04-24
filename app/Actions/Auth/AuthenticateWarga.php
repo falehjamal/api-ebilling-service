@@ -6,7 +6,6 @@ use App\Models\Legacy\Warga;
 use App\Models\WargaAccount;
 use App\Support\LegacyAccount;
 use Illuminate\Auth\AuthenticationException;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Laravel\Sanctum\NewAccessToken;
@@ -32,6 +31,8 @@ final class AuthenticateWarga
 
         $warga = Warga::forAccount($account)
             ->where('username', $username)
+            ->where('level', 'Pelanggan')
+            ->where('status', '1')
             ->first();
 
         if ($warga === null) {
@@ -40,10 +41,6 @@ final class AuthenticateWarga
 
         if (! hash_equals((string) $warga->password, $password)) {
             throw new AuthenticationException(__('Kredensial tidak valid.'));
-        }
-
-        if (Str::lower((string) $warga->status) !== 'aktif') {
-            throw new AuthenticationException(__('Akun warga tidak aktif.'));
         }
 
         $wargaAccount = WargaAccount::query()->updateOrCreate(

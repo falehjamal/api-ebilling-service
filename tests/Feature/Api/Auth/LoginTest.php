@@ -8,7 +8,8 @@ it('mengeluarkan token saat account+username+password valid', function () {
         [
             'username' => 'warga1',
             'password' => 'rahasia',
-            'status' => 'aktif',
+            'level' => 'Pelanggan',
+            'status' => '1',
             'account' => '1114',
         ],
     ]);
@@ -23,6 +24,26 @@ it('mengeluarkan token saat account+username+password valid', function () {
         ->assertJsonStructure(['token', 'warga']);
 
     expect(WargaAccount::query()->count())->toBe(1);
+});
+
+it('menerima POST /api/login sebagai alias ke login yang sama', function () {
+    createLegacyWargaTableForAccount('1114', [
+        [
+            'username' => 'warga1',
+            'password' => 'rahasia',
+            'level' => 'Pelanggan',
+            'status' => '1',
+            'account' => '1114',
+        ],
+    ]);
+
+    $this->postJson('/api/login', [
+        'account' => '1114',
+        'username' => 'warga1',
+        'password' => 'rahasia',
+    ])
+        ->assertOk()
+        ->assertJsonStructure(['token', 'warga']);
 });
 
 it('menolak account yang tidak ada tabelnya', function () {
@@ -40,7 +61,8 @@ it('menolak kredensial salah', function () {
         [
             'username' => 'warga1',
             'password' => 'rahasia',
-            'status' => 'aktif',
+            'level' => 'Pelanggan',
+            'status' => '1',
             'account' => '1114',
         ],
     ]);
@@ -68,7 +90,8 @@ it('rate limits setelah 5 percobaan login', function () {
         [
             'username' => 'warga1',
             'password' => 'rahasia',
-            'status' => 'aktif',
+            'level' => 'Pelanggan',
+            'status' => '1',
             'account' => '1114',
         ],
     ]);
@@ -88,12 +111,49 @@ it('rate limits setelah 5 percobaan login', function () {
     ])->assertStatus(429);
 });
 
+it('menolak login jika level bukan Pelanggan', function () {
+    createLegacyWargaTableForAccount('1114', [
+        [
+            'username' => 'warga1',
+            'password' => 'rahasia',
+            'level' => 'Admin',
+            'status' => '1',
+            'account' => '1114',
+        ],
+    ]);
+
+    $this->postJson('/api/auth/login', [
+        'account' => '1114',
+        'username' => 'warga1',
+        'password' => 'rahasia',
+    ])->assertUnauthorized();
+});
+
+it('menolak login jika status bukan 1', function () {
+    createLegacyWargaTableForAccount('1114', [
+        [
+            'username' => 'warga1',
+            'password' => 'rahasia',
+            'level' => 'Pelanggan',
+            'status' => '0',
+            'account' => '1114',
+        ],
+    ]);
+
+    $this->postJson('/api/auth/login', [
+        'account' => '1114',
+        'username' => 'warga1',
+        'password' => 'rahasia',
+    ])->assertUnauthorized();
+});
+
 it('tidak mengekspos password, nik, atau foto_ktp di response login', function () {
     createLegacyWargaTableForAccount('1114', [
         [
             'username' => 'warga1',
             'password' => 'rahasia',
-            'status' => 'aktif',
+            'level' => 'Pelanggan',
+            'status' => '1',
             'account' => '1114',
             'nik' => '123456',
             'foto_ktp' => 'foto1.jpg',

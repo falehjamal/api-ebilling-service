@@ -59,7 +59,8 @@ function createLegacyWargaTableForAccount(string $account, array $rows = []): vo
         $table->increments('id_warga');
         $table->string('username')->default('');
         $table->string('password')->default('');
-        $table->string('status')->default('aktif');
+        $table->string('level')->default('');
+        $table->string('status')->default('1');
         $table->string('account')->nullable();
         $table->string('id_pelanggan')->nullable();
         $table->string('nik')->nullable();

@@ -9,6 +9,13 @@ Route::get('/health', fn () => response()->json([
     'message' => 'API is alive',
 ]));
 
+/*
+| Alias singkat (banyak client mengharapkan POST /api/login).
+| Rute kanonik tetap di bawah prefix auth/ sesuai struktur API.
+*/
+Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
