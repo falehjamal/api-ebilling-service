@@ -1,0 +1,9 @@
+{
+    "agents": [
+        "cursor"
+    ],
+    "skills": [
+        "laravel-best-practices",
+        "pest-testing"
+    ]
+}
