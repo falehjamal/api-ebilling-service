@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Legacy\Warga;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +69,16 @@ function createLegacyWargaTableForAccount(string $account, array $rows = []): vo
         $table->string('foto_rumah')->nullable();
         $table->string('nama_warga')->nullable();
         $table->date('tgl_registrasi')->nullable();
+        $existing = [
+            'id_warga', 'username', 'password', 'level', 'status', 'account', 'id_pelanggan', 'nik',
+            'foto_ktp', 'foto_rumah', 'nama_warga', 'tgl_registrasi',
+        ];
+        foreach (Warga::columnsForListResponse() as $col) {
+            if (in_array($col, $existing, true)) {
+                continue;
+            }
+            $table->string($col)->nullable();
+        }
     });
 
     foreach ($rows as $row) {

@@ -33,9 +33,10 @@ Ganti sesuai environment Anda.
 | `POST` | `/api/login` | Tidak | Login |
 | `POST` | `/api/logout` | Bearer | Hapus token saat ini |
 | `GET` | `/api/me` | Bearer | Profil warga dari DB legacy |
+| `GET` | `/api/pelanggan` | Bearer | Daftar pelanggan (`level = Pelanggan`) tenant user, terpaginasi |
 | `GET` | `/api/hello-world` | Bearer | Contoh endpoint terproteksi |
 
-**Rate limit login:** maksimal **5** percobaan per menit per IP (path login).
+**Rate limit:** login `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
 
 ---
 
@@ -196,7 +197,72 @@ curl -sS -X GET "https://api-ebilling-service.test/api/me" \
 
 ---
 
-## 4. Hello World (uji token)
+## 4. Daftar pelanggan (`/api/pelanggan`)
+
+Mengembalikan semua baris dengan **`level = Pelanggan`** di tabel legacy `tb_warga_{account}`, di mana **`account` diambil dari user token** (field `account` pada pengguna yang login), **bukan** dari query string — parameter `account` di URL diabaikan untuk keamanan multi-tenant.
+
+**Request**
+
+```http
+GET /api/pelanggan?page=1&per_page=15 HTTP/1.1
+Host: api-ebilling-service.test
+Accept: application/json
+Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Query (opsional)**
+
+| Param | Tipe | Keterangan |
+|-------|------|------------|
+| `page` | integer | Halaman, min `1` |
+| `per_page` | integer | Default `15`, min `1`, maks `100` |
+
+**Respons sukses `200`** — JSON terpaginasi Laravel (kumpulan `WargaResource` di `data`, plus `links` dan `meta`):
+
+```json
+{
+  "data": [
+    {
+      "id_warga": 1,
+      "nama_warga": "Contoh",
+      "username": "warga1",
+      "level": "Pelanggan",
+      "id_sales": null,
+      "nama_sales": null
+    }
+  ],
+  "links": { "first": "...", "last": "...", "prev": null, "next": null },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "per_page": 15,
+    "to": 1,
+    "total": 1
+  }
+}
+```
+
+| HTTP | Kondisi |
+|------|---------|
+| `401` | Tanpa / token tidak valid |
+| `403` | Token tidak punya scope `account:{account}` (jarang, jika token dimanipulasi) |
+| `404` | Tabel `tb_warga_{account}` tidak ada di legacy untuk tenant user |
+| `422` | `per_page` melebihi 100 atau validasi query gagal |
+
+**cURL**
+
+```bash
+curl -sS -G "https://api-ebilling-service.test/api/pelanggan" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  --data-urlencode "per_page=15" \
+  --data-urlencode "page=1"
+```
+
+---
+
+## 5. Hello World (uji token)
 
 **Request**
 
@@ -226,7 +292,7 @@ curl -sS -X GET "https://api-ebilling-service.test/api/hello-world" \
 
 ---
 
-## 5. Logout
+## 6. Logout
 
 **URL:** `POST /api/logout`
 
@@ -265,7 +331,7 @@ Setelah logout, token yang sama tidak boleh dipakai lagi (`401` pada `/api/me`).
 ## Alur client singkat
 
 1. `POST /api/login` → simpan `token`.
-2. Panggil `GET /api/me` (atau endpoint lain) dengan header `Authorization: Bearer {token}`.
+2. Panggil `GET /api/me`, `GET /api/pelanggan`, dst. dengan header `Authorization: Bearer {token}`.
 3. `POST /api/logout` saat selesai (opsional).
 
 ---
