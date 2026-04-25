@@ -14,7 +14,7 @@ it('mengeluarkan token saat account+username+password valid', function () {
         ],
     ]);
 
-    $this->postJson('/api/auth/login', [
+    $this->postJson('/api/login', [
         'account' => '1114',
         'username' => 'warga1',
         'password' => 'rahasia',
@@ -26,28 +26,8 @@ it('mengeluarkan token saat account+username+password valid', function () {
     expect(WargaAccount::query()->count())->toBe(1);
 });
 
-it('menerima POST /api/login sebagai alias ke login yang sama', function () {
-    createLegacyWargaTableForAccount('1114', [
-        [
-            'username' => 'warga1',
-            'password' => 'rahasia',
-            'level' => 'Pelanggan',
-            'status' => '1',
-            'account' => '1114',
-        ],
-    ]);
-
-    $this->postJson('/api/login', [
-        'account' => '1114',
-        'username' => 'warga1',
-        'password' => 'rahasia',
-    ])
-        ->assertOk()
-        ->assertJsonStructure(['token', 'warga']);
-});
-
 it('menolak account yang tidak ada tabelnya', function () {
-    $this->postJson('/api/auth/login', [
+    $this->postJson('/api/login', [
         'account' => '9999',
         'username' => 'x',
         'password' => 'y',
@@ -67,7 +47,7 @@ it('menolak kredensial salah', function () {
         ],
     ]);
 
-    $this->postJson('/api/auth/login', [
+    $this->postJson('/api/login', [
         'account' => '1114',
         'username' => 'warga1',
         'password' => 'salah',
@@ -76,7 +56,7 @@ it('menolak kredensial salah', function () {
 });
 
 it('menolak format account yang tidak valid', function () {
-    $this->postJson('/api/auth/login', [
+    $this->postJson('/api/login', [
         'account' => "1114'; DROP TABLE users; --",
         'username' => 'warga1',
         'password' => 'x',
@@ -97,14 +77,14 @@ it('rate limits setelah 5 percobaan login', function () {
     ]);
 
     for ($i = 0; $i < 5; $i++) {
-        $this->postJson('/api/auth/login', [
+        $this->postJson('/api/login', [
             'account' => '1114',
             'username' => 'warga1',
             'password' => 'salah',
         ])->assertUnauthorized();
     }
 
-    $this->postJson('/api/auth/login', [
+    $this->postJson('/api/login', [
         'account' => '1114',
         'username' => 'warga1',
         'password' => 'salah',
@@ -122,7 +102,7 @@ it('menolak login jika level bukan Pelanggan', function () {
         ],
     ]);
 
-    $this->postJson('/api/auth/login', [
+    $this->postJson('/api/login', [
         'account' => '1114',
         'username' => 'warga1',
         'password' => 'rahasia',
@@ -140,7 +120,7 @@ it('menolak login jika status bukan 1', function () {
         ],
     ]);
 
-    $this->postJson('/api/auth/login', [
+    $this->postJson('/api/login', [
         'account' => '1114',
         'username' => 'warga1',
         'password' => 'rahasia',
@@ -161,7 +141,7 @@ it('tidak mengekspos password, nik, atau foto_ktp di response login', function (
         ],
     ]);
 
-    $res = $this->postJson('/api/auth/login', [
+    $res = $this->postJson('/api/login', [
         'account' => '1114',
         'username' => 'warga1',
         'password' => 'rahasia',

@@ -30,10 +30,8 @@ Ganti sesuai environment Anda.
 | Method | Path | Auth | Keterangan |
 |--------|------|------|------------|
 | `GET` | `/api/health` | Tidak | Cek service hidup |
-| `POST` | `/api/login` | Tidak | Login (alias) |
-| `POST` | `/api/auth/login` | Tidak | Login (kanonik) |
+| `POST` | `/api/login` | Tidak | Login |
 | `POST` | `/api/logout` | Bearer | Hapus token saat ini |
-| `POST` | `/api/auth/logout` | Bearer | Sama seperti di atas |
 | `GET` | `/api/me` | Bearer | Profil warga dari DB legacy |
 | `GET` | `/api/hello-world` | Bearer | Contoh endpoint terproteksi |
 
@@ -71,10 +69,7 @@ curl -sS -X GET "https://api-ebilling-service.test/api/health" \
 
 ## 2. Login
 
-**URL (pilih salah satu)**
-
-- `POST /api/login`
-- `POST /api/auth/login`
+**URL:** `POST /api/login`
 
 **Body JSON**
 
@@ -233,10 +228,7 @@ curl -sS -X GET "https://api-ebilling-service.test/api/hello-world" \
 
 ## 5. Logout
 
-**URL (pilih salah satu)**
-
-- `POST /api/logout`
-- `POST /api/auth/logout`
+**URL:** `POST /api/logout`
 
 **Request**
 
