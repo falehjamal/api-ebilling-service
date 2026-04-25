@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\PelangganController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+Route::redirect('/', '/api/health');
+
 Route::get('/health', fn () => response()->json([
     'ok' => true,
     'message' => 'API is alive',
