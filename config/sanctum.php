@@ -54,6 +54,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Token inactivity (sliding) TTL
+    |--------------------------------------------------------------------------
+    |
+    | Berapa menit setelah aktifitas terakhir (request API dengan Bearer token) token
+    | tetap diperpanjang. `expires_at` di personal_access_tokens di-refresh per request
+    | (middleware). Tanpa request dalam periode ini, token tidak bisa dipakai lagi
+    | (unauthenticated) sampai login ulang. Default 1440 = 24 jam.
+    |
+    */
+    'token_inactivity_ttl_minutes' => (int) env('SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES', 1440),
+
+    /*
+    |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------
     |

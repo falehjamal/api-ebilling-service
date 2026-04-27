@@ -54,7 +54,9 @@ final class AuthenticateWarga
             ],
         );
 
-        $token = $wargaAccount->createToken('api', ['account:'.$account]);
+        $minutes = (int) config('sanctum.token_inactivity_ttl_minutes', 1440);
+        $expiresAt = $minutes >= 1 ? now()->addMinutes($minutes) : null;
+        $token = $wargaAccount->createToken('api', ['account:'.$account], $expiresAt);
 
         return [
             'token' => $token,

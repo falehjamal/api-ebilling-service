@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\RefreshSanctumTokenExpiration;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'refresh.sanctum.token' => RefreshSanctumTokenExpiration::class,
+        ]);
+
         $middleware->redirectGuestsTo(
             // Default Laravel memanggil route('login') — proyek ini API-only, belum ada route web login.
             // Tanpa override, browser ke /api/* memicu RouteNotFoundException (500) saat auth gagal.

@@ -11,7 +11,7 @@ Ganti sesuai environment Anda.
 
 - **`account`**: kode tenant (hanya huruf, angka, `_`, `-`). Data warga dibaca dari tabel legacy **`tb_warga_{account}`** (contoh: `tb_warga_1114`).
 - **Login** hanya untuk **pelanggan**: kolom **`level`** harus persis **`Pelanggan`**, kolom **`status`** harus **`1`** (string, sesuai `where` di kode), plus `username` + `password` (plain text) cocok.
-- **Token**: Laravel Sanctum. Kirim **`Authorization: Bearer {token}`** untuk endpoint yang membutuhkan auth.
+- **Token**: Laravel Sanctum. Kirim **`Authorization: Bearer {token}`** untuk endpoint yang membutuhkan auth. Masa berlaku **geser (sliding)**: setiap request API yang valid memperpanjang token; **tanpa request dalam 24 jam** (default, bisa diubah lewat `SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES` / `config/sanctum.php`) token tidak dapat dipakai lagi — **login ulang** diperlukan.
 
 ---
 
@@ -97,6 +97,8 @@ curl -sS -X GET "https://api-ebilling-service.test/api/health" \
 ```
 
 Objek `warga` adalah subset field (whitelist); tidak termasuk `password`, `nik`, `foto_ktp`, dll.
+
+Field `token` dipasang dengan **`expires_at`** di database: default **24 jam** setelah aktifitas terakhir (setiap request API yang sukses memperpanjang masa berlaku). Variabel `.env`: `SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES` (menit).
 
 **Respons gagal (contoh)**
 
@@ -395,6 +397,7 @@ Setelah logout, token yang sama tidak boleh dipakai lagi (`401` pada `/api/me`).
 | `APP_URL` | URL publik aplikasi |
 | `DB_*` | Database **lokal** (Sanctum, `warga_accounts`, cache, dll.) |
 | `DB_LEGACY_*` | Koneksi ke DB billing lama (`tb_warga_{account}`, `tb_laporan_pelanggan`, dll.) |
+| `SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES` | (Opsional) Berapa menit token API boleh tidak dipakai sebelum dianggap kedaluwarsa; default `1440` (24 jam). Setiap request API yang sukses memperpanjang masa berlaku. |
 
 ---
 

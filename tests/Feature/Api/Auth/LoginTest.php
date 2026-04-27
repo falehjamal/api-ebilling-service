@@ -2,6 +2,7 @@
 
 use App\Models\WargaAccount;
 use Illuminate\Support\Facades\Cache;
+use Laravel\Sanctum\PersonalAccessToken;
 
 it('mengeluarkan token saat account+username+password valid', function () {
     createLegacyWargaTableForAccount('1114', [
@@ -24,6 +25,88 @@ it('mengeluarkan token saat account+username+password valid', function () {
         ->assertJsonStructure(['token', 'warga']);
 
     expect(WargaAccount::query()->count())->toBe(1);
+});
+
+it('menyimpan expires_at token sekitar 24 jam (sliding) saat login', function () {
+    createLegacyWargaTableForAccount('1114', [
+        [
+            'username' => 'warga1',
+            'password' => 'rahasia',
+            'level' => 'Pelanggan',
+            'status' => '1',
+            'account' => '1114',
+        ],
+    ]);
+
+    $this->postJson('/api/login', [
+        'account' => '1114',
+        'username' => 'warga1',
+        'password' => 'rahasia',
+    ])->assertOk();
+
+    $token = PersonalAccessToken::query()->first();
+    expect($token)->not->toBeNull()
+        ->and($token->expires_at)->not->toBeNull()
+        ->and($token->expires_at->isAfter(now()->addHours(23)))->toBeTrue()
+        ->and($token->expires_at->isBefore(now()->addHours(25)))->toBeTrue();
+});
+
+it('menolak request dengan token yang expires_at sudah lewat', function () {
+    createLegacyWargaTableForAccount('1114', [
+        [
+            'username' => 'warga1',
+            'password' => 'rahasia',
+            'level' => 'Pelanggan',
+            'status' => '1',
+            'account' => '1114',
+        ],
+    ]);
+
+    $res = $this->postJson('/api/login', [
+        'account' => '1114',
+        'username' => 'warga1',
+        'password' => 'rahasia',
+    ])->assertOk();
+
+    $plain = $res->json('token');
+    $token = PersonalAccessToken::query()->first();
+    $token?->forceFill(['expires_at' => now()->subMinute()])->save();
+
+    $this->getJson('/api/me', [
+        'Accept' => 'application/json',
+        'Authorization' => 'Bearer '.$plain,
+    ])->assertUnauthorized();
+});
+
+it('memperbarui expires_at setelah request API sukses', function () {
+    createLegacyWargaTableForAccount('1114', [
+        [
+            'username' => 'warga1',
+            'password' => 'rahasia',
+            'level' => 'Pelanggan',
+            'status' => '1',
+            'account' => '1114',
+        ],
+    ]);
+
+    $res = $this->postJson('/api/login', [
+        'account' => '1114',
+        'username' => 'warga1',
+        'password' => 'rahasia',
+    ])->assertOk();
+
+    $plain = $res->json('token');
+    $token = PersonalAccessToken::query()->first();
+    $token?->forceFill(['expires_at' => now()->addHour()])->save();
+    $before = $token->fresh()->expires_at;
+
+    $this->getJson('/api/me', [
+        'Accept' => 'application/json',
+        'Authorization' => 'Bearer '.$plain,
+    ])->assertOk();
+
+    $after = $token->fresh()->expires_at;
+    expect($after->gt($before))->toBeTrue();
 });
 
 it('menolak account yang tidak ada tabelnya', function () {
