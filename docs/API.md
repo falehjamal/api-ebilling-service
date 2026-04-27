@@ -34,9 +34,10 @@ Ganti sesuai environment Anda.
 | `POST` | `/api/logout` | Bearer | Hapus token saat ini |
 | `GET` | `/api/me` | Bearer | Profil warga dari DB legacy |
 | `GET` | `/api/pelanggan` | Bearer | Daftar pelanggan (`level = Pelanggan`) tenant user, terpaginasi |
+| `GET` | `/api/instalasi-pelanggan-baru` | Bearer | Order/instalasi pelanggan baru (`tb_laporan_pelanggan`), terpaginasi |
 | `GET` | `/api/hello-world` | Bearer | Contoh endpoint terproteksi |
 
-**Rate limit:** login `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
+**Rate limit:** login `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan` dan `GET /api/instalasi-pelanggan-baru` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
 
 ---
 
@@ -262,7 +263,76 @@ curl -sS -G "https://api-ebilling-service.test/api/pelanggan" \
 
 ---
 
-## 5. Hello World (uji token)
+## 5. Daftar order/instalasi pelanggan baru (`/api/instalasi-pelanggan-baru`)
+
+Membaca baris dari tabel legacy **`tb_laporan_pelanggan`** (shared, satu tabel untuk semua tenant) dengan filter:
+
+- **`account`**: nilai tenant diambil dari **user token** (bukan query string); parameter `account` di URL diabaikan.
+- **`jns_laporan`**: salah satu dari `Installasi Baru`, `Survey Baru`, `New Regist`.
+- **`status`**: bukan `Closed`, `Pemasangan Berhasil Dilakukan`, atau `Cancel`.
+
+Urutan default: **`waktu_pembuatan` DESC**.
+
+**Request**
+
+```http
+GET /api/instalasi-pelanggan-baru?page=1&per_page=15 HTTP/1.1
+Host: api-ebilling-service.test
+Accept: application/json
+Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Query (opsional)**
+
+| Param | Tipe | Keterangan |
+|-------|------|------------|
+| `page` | integer | Halaman, min `1` |
+| `per_page` | integer | Default `15`, min `1`, maks `100` |
+
+**Respons sukses `200`** — JSON terpaginasi Laravel; setiap item di `data` memuat **semua kolom** baris `tb_laporan_pelanggan` (mirror `SELECT *`), plus `links` dan `meta`:
+
+```json
+{
+  "data": [
+    {
+      "id_laporan_pelanggan": 1,
+      "jns_laporan": "Installasi Baru",
+      "status": "Open",
+      "account": 1114,
+      "waktu_pembuatan": "2025-01-15T08:00:00.000000Z"
+    }
+  ],
+  "links": { "first": "...", "last": "...", "prev": null, "next": null },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "per_page": 15,
+    "to": 1,
+    "total": 1
+  }
+}
+```
+
+| HTTP | Kondisi |
+|------|---------|
+| `401` | Tanpa / token tidak valid |
+| `403` | Token tidak punya scope `account:{account}` |
+| `422` | `per_page` melebihi 100 atau validasi query gagal |
+
+**cURL**
+
+```bash
+curl -sS -G "https://api-ebilling-service.test/api/instalasi-pelanggan-baru" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  --data-urlencode "per_page=15" \
+  --data-urlencode "page=1"
+```
+
+---
+
+## 6. Hello World (uji token)
 
 **Request**
 
@@ -292,7 +362,7 @@ curl -sS -X GET "https://api-ebilling-service.test/api/hello-world" \
 
 ---
 
-## 6. Logout
+## 7. Logout
 
 **URL:** `POST /api/logout`
 
@@ -324,14 +394,14 @@ Setelah logout, token yang sama tidak boleh dipakai lagi (`401` pada `/api/me`).
 |----------|------------|
 | `APP_URL` | URL publik aplikasi |
 | `DB_*` | Database **lokal** (Sanctum, `warga_accounts`, cache, dll.) |
-| `DB_LEGACY_*` | Koneksi ke DB billing lama (`tb_warga_{account}`) |
+| `DB_LEGACY_*` | Koneksi ke DB billing lama (`tb_warga_{account}`, `tb_laporan_pelanggan`, dll.) |
 
 ---
 
 ## Alur client singkat
 
 1. `POST /api/login` → simpan `token`.
-2. Panggil `GET /api/me`, `GET /api/pelanggan`, dst. dengan header `Authorization: Bearer {token}`.
+2. Panggil `GET /api/me`, `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, dst. dengan header `Authorization: Bearer {token}`.
 3. `POST /api/logout` saat selesai (opsional).
 
 ---

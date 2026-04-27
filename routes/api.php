@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\InstalasiPelangganBaruController;
 use App\Http\Controllers\Api\PelangganController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,7 @@ Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanct
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('me', [AuthController::class, 'me']);
     Route::get('pelanggan', [PelangganController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('instalasi-pelanggan-baru', [InstalasiPelangganBaruController::class, 'index'])->middleware('throttle:60,1');
 
     Route::get('hello-world', function (Request $request) {
         $user = $request->user();
