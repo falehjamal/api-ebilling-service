@@ -165,3 +165,39 @@ function createLegacyLaporanPelangganTable(array $rows = []): void
         DB::connection('legacy')->table($tableName)->insert($row);
     }
 }
+
+/**
+ * Tabel uji per-tenant: tb_iuran_{$account} di connection legacy (sama connection default saat testing).
+ */
+function createLegacyIuranTableForAccount(string $account, array $rows = []): void
+{
+    $table = 'tb_iuran_'.$account;
+    Schema::connection('legacy')->dropIfExists($table);
+
+    Schema::connection('legacy')->create($table, function (Blueprint $table) {
+        $table->increments('id_ipl');
+        $table->string('id_pelanggan', 64)->nullable();
+        $table->string('nama_warga', 255)->nullable();
+        $table->string('nama_sales', 255)->nullable();
+        $table->string('nama_tipe', 255)->nullable();
+        $table->integer('harga')->nullable();
+        $table->integer('jumlah_bayar')->nullable();
+        $table->string('status_transaksi', 128)->nullable();
+        $table->text('alamat')->nullable();
+        $table->string('tlp', 64)->nullable();
+        $table->integer('id_lokasi')->nullable();
+        $table->string('foto', 255)->nullable();
+        $table->date('bayar_bulan')->nullable();
+        $table->string('nama_rekening', 255)->nullable();
+        $table->dateTime('wkt_entry')->nullable();
+        $table->string('keterangan', 255)->default('');
+        $table->string('metode_insentif', 64)->nullable();
+        $table->string('insentif_sales', 64)->nullable();
+        $table->string('nominal_insentif', 64)->nullable();
+        $table->integer('account')->nullable();
+    });
+
+    foreach ($rows as $row) {
+        DB::connection('legacy')->table($table)->insert($row);
+    }
+}

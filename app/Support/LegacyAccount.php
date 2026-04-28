@@ -9,6 +9,8 @@ final class LegacyAccount
 {
     public const TABLE_PREFIX = 'tb_warga_';
 
+    public const IURAN_TABLE_PREFIX = 'tb_iuran_';
+
     /**
      * @throws InvalidArgumentException
      */
@@ -34,6 +36,18 @@ final class LegacyAccount
     public static function tableExists(string $normalizedAccount): bool
     {
         $table = self::wargaTableName($normalizedAccount);
+
+        return Schema::connection('legacy')->hasTable($table);
+    }
+
+    public static function iuranTableName(string $normalizedAccount): string
+    {
+        return self::IURAN_TABLE_PREFIX.$normalizedAccount;
+    }
+
+    public static function iuranTableExists(string $normalizedAccount): bool
+    {
+        $table = self::iuranTableName($normalizedAccount);
 
         return Schema::connection('legacy')->hasTable($table);
     }

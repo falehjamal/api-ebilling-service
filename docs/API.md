@@ -9,7 +9,7 @@ Ganti sesuai environment Anda.
 
 ## Ringkas multi-tenant
 
-- **`account`**: kode tenant (hanya huruf, angka, `_`, `-`). Data warga dibaca dari tabel legacy **`tb_warga_{account}`** (contoh: `tb_warga_1114`).
+- **`account`**: kode tenant (hanya huruf, angka, `_`, `-`). Data warga dibaca dari tabel legacy **`tb_warga_{account}`** (contoh: `tb_warga_1114`). Data pembayaran/iuran dibaca dari **`tb_iuran_{account}`** (contoh: `tb_iuran_1114`).
 - **Login** hanya untuk **pelanggan**: kolom **`level`** harus persis **`Pelanggan`**, kolom **`status`** harus **`1`** (string, sesuai `where` di kode), plus `username` + `password` (plain text) cocok.
 - **Token**: Laravel Sanctum. Kirim **`Authorization: Bearer {token}`** untuk endpoint yang membutuhkan auth. Masa berlaku **geser (sliding)**: setiap request API yang valid memperpanjang token; **tanpa request dalam 24 jam** (default, bisa diubah lewat `SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES` / `config/sanctum.php`) token tidak dapat dipakai lagi — **login ulang** diperlukan.
 
@@ -35,9 +35,10 @@ Ganti sesuai environment Anda.
 | `GET` | `/api/me` | Bearer | Profil warga dari DB legacy |
 | `GET` | `/api/pelanggan` | Bearer | Daftar pelanggan (`level = Pelanggan`) tenant user, terpaginasi |
 | `GET` | `/api/instalasi-pelanggan-baru` | Bearer | Order/instalasi pelanggan baru (`tb_laporan_pelanggan`), terpaginasi |
+| `GET` | `/api/pembayaran-pelanggan` | Bearer | Pembayaran pelanggan (`tb_iuran_{account}`), terpaginasi |
 | `GET` | `/api/hello-world` | Bearer | Contoh endpoint terproteksi |
 
-**Rate limit:** login `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan` dan `GET /api/instalasi-pelanggan-baru` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
+**Rate limit:** login `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, dan `GET /api/pembayaran-pelanggan` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
 
 ---
 
@@ -334,7 +335,128 @@ curl -sS -G "https://api-ebilling-service.test/api/instalasi-pelanggan-baru" \
 
 ---
 
-## 6. Hello World (uji token)
+## 6. Daftar pembayaran pelanggan (`/api/pembayaran-pelanggan`)
+
+Membaca baris dari tabel legacy **`tb_iuran_{account}`**, di mana **`account` diambil dari user token**, bukan dari query string (parameter `account` di URL diabaikan untuk keamanan multi-tenant).
+
+**Default filter periode:** baris dengan `wkt_entry` pada **bulan kalender berjalan** (00:00:00 tanggal 1 sampai 23:59:59 tanggal terakhir bulan itu). Filter dapat di-override (saling eksklusif):
+
+- **`from` + `to`**: rentang tanggal inklusif (format `YYYY-MM-DD`), `wkt_entry` antara `from 00:00:00` dan `to 23:59:59`.
+- **`bulan`**: satu bulan penuh (format `YYYY-MM`).
+
+Urutan default: **`id_ipl` DESC**.
+
+**Kolom nomor urut (“No”) di UI:** hitung di client: untuk indeks baris ke-`i` (0-based) pada halaman saat ini, **No = `meta.from + i`** (pakai field `meta.from` dari respons terpaginasi Laravel).
+
+**Request**
+
+```http
+GET /api/pembayaran-pelanggan?page=1&per_page=15 HTTP/1.1
+Host: api-ebilling-service.test
+Accept: application/json
+Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Query (opsional)**
+
+| Param | Tipe | Keterangan |
+|-------|------|------------|
+| `page` | integer | Halaman, min `1` |
+| `per_page` | integer | Default `15`, min `1`, maks `100` |
+| `from` | string `YYYY-MM-DD` | Awal rentang (wajib bersama `to`; tidak boleh bersama `bulan`) |
+| `to` | string `YYYY-MM-DD` | Akhir rentang (wajib bersama `from`; harus ≥ `from`; tidak boleh bersama `bulan`) |
+| `bulan` | string `YYYY-MM` | Satu bulan penuh (tidak boleh bersama `from`/`to`) |
+
+**Respons sukses `200`** — JSON terpaginasi Laravel; setiap item di `data` memuat field berikut:
+
+| Field JSON | Sumber kolom DB (`tb_iuran_{account}`) |
+|------------|----------------------------------------|
+| `id_ipl` | `id_ipl` |
+| `id_pelanggan` | `id_pelanggan` |
+| `nama_pelanggan` | `nama_warga` |
+| `nama_sales` | `nama_sales` |
+| `nama_pembayaran` | `nama_tipe` |
+| `nominal_harus_dibayar` | `harga` |
+| `nominal_pembayaran` | `jumlah_bayar` |
+| `status_pembayaran` | `status_transaksi` |
+| `alamat` | `alamat` |
+| `tlp` | `tlp` |
+| `lokasi` | `id_lokasi` |
+| `bukti_pembayaran` | `foto` |
+| `periode_pembayaran` | `bayar_bulan` |
+| `metode_pembayaran` | `nama_rekening` |
+| `waktu_entry` | `wkt_entry` |
+| `keterangan` | `keterangan` |
+| `metode_insentif` | `metode_insentif` |
+| `insentif` | `insentif_sales` |
+| `nominal_insentif` | `nominal_insentif` |
+
+```json
+{
+  "data": [
+    {
+      "id_ipl": 1,
+      "id_pelanggan": "PLG-1",
+      "nama_pelanggan": "Contoh",
+      "nama_sales": "Sales",
+      "nama_pembayaran": "Internet",
+      "nominal_harus_dibayar": 100000,
+      "nominal_pembayaran": 100000,
+      "status_pembayaran": "Selesai",
+      "alamat": null,
+      "tlp": null,
+      "lokasi": 5,
+      "bukti_pembayaran": null,
+      "periode_pembayaran": "2025-03-01",
+      "metode_pembayaran": "BCA",
+      "waktu_entry": "2025-03-10T03:00:00.000000Z",
+      "keterangan": "",
+      "metode_insentif": null,
+      "insentif": null,
+      "nominal_insentif": null
+    }
+  ],
+  "links": { "first": "...", "last": "...", "prev": null, "next": null },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "per_page": 15,
+    "to": 1,
+    "total": 1
+  }
+}
+```
+
+| HTTP | Kondisi |
+|------|---------|
+| `401` | Tanpa / token tidak valid |
+| `403` | Token tidak punya scope `account:{account}` |
+| `404` | Tabel `tb_iuran_{account}` tidak ada di legacy untuk tenant user |
+| `422` | `per_page` melebihi 100, `from`/`to`/`bulan` tidak valid, atau kombinasi query tidak diizinkan |
+
+**cURL**
+
+```bash
+curl -sS -G "https://api-ebilling-service.test/api/pembayaran-pelanggan" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  --data-urlencode "per_page=15" \
+  --data-urlencode "page=1"
+```
+
+Contoh filter bulan tertentu:
+
+```bash
+curl -sS -G "https://api-ebilling-service.test/api/pembayaran-pelanggan" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  --data-urlencode "bulan=2025-03"
+```
+
+---
+
+## 7. Hello World (uji token)
 
 **Request**
 
@@ -364,7 +486,7 @@ curl -sS -X GET "https://api-ebilling-service.test/api/hello-world" \
 
 ---
 
-## 7. Logout
+## 8. Logout
 
 **URL:** `POST /api/logout`
 
@@ -396,7 +518,7 @@ Setelah logout, token yang sama tidak boleh dipakai lagi (`401` pada `/api/me`).
 |----------|------------|
 | `APP_URL` | URL publik aplikasi |
 | `DB_*` | Database **lokal** (Sanctum, `warga_accounts`, cache, dll.) |
-| `DB_LEGACY_*` | Koneksi ke DB billing lama (`tb_warga_{account}`, `tb_laporan_pelanggan`, dll.) |
+| `DB_LEGACY_*` | Koneksi ke DB billing lama (`tb_warga_{account}`, `tb_iuran_{account}`, `tb_laporan_pelanggan`, dll.) |
 | `SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES` | (Opsional) Berapa menit token API boleh tidak dipakai sebelum dianggap kedaluwarsa; default `1440` (24 jam). Setiap request API yang sukses memperpanjang masa berlaku. |
 
 ---
@@ -404,7 +526,7 @@ Setelah logout, token yang sama tidak boleh dipakai lagi (`401` pada `/api/me`).
 ## Alur client singkat
 
 1. `POST /api/login` → simpan `token`.
-2. Panggil `GET /api/me`, `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, dst. dengan header `Authorization: Bearer {token}`.
+2. Panggil `GET /api/me`, `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dst. dengan header `Authorization: Bearer {token}`.
 3. `POST /api/logout` saat selesai (opsional).
 
 ---
