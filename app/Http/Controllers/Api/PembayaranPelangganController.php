@@ -9,12 +9,24 @@ use App\Models\Legacy\Iuran;
 use App\Models\WargaAccount;
 use App\Support\LegacyAccount;
 use Carbon\Carbon;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class PembayaranPelangganController extends Controller
 {
+    /**
+     * Pembayaran pelanggan (`tb_iuran_{account}`), terpaginasi. Default filter: bulan kalender berjalan; override dengan `from`+`to` atau `bulan`.
+     *
+     * **Rate limit:** 60 permintaan per menit per IP.
+     *
+     * @response \Illuminate\Http\Resources\Json\AnonymousResourceCollection<int, \App\Http\Resources\PembayaranPelangganResource>
+     */
+    #[Response(401, description: 'Tanpa token atau token tidak valid.', type: 'array{message: string}')]
+    #[Response(403, description: 'Token tidak memiliki scope tenant.', type: 'array{message: string}')]
+    #[Response(404, description: 'Tabel tb_iuran_{account} tidak ada di legacy.', type: 'array{message: string}')]
+    #[Response(422, description: 'Validasi query (page, per_page, from, to, bulan).', type: 'array{message: string, errors?: array<string, array<int, string>>}')]
     public function index(IndexPembayaranPelangganRequest $request): AnonymousResourceCollection|JsonResponse
     {
         /** @var WargaAccount $user */
@@ -24,13 +36,13 @@ class PembayaranPelangganController extends Controller
         if (! LegacyAccount::iuranTableExists($account)) {
             return response()->json([
                 'message' => __('Data tenant tidak ditemukan.'),
-            ], Response::HTTP_NOT_FOUND);
+            ], SymfonyResponse::HTTP_NOT_FOUND);
         }
 
         if (! $user->tokenCan('account:'.$account)) {
             return response()->json([
                 'message' => __('Akses ditolak.'),
-            ], Response::HTTP_FORBIDDEN);
+            ], SymfonyResponse::HTTP_FORBIDDEN);
         }
 
         $validated = $request->validated();

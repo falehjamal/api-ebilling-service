@@ -5,6 +5,8 @@ Ringkasan endpoint, header, body, dan contoh `curl`. Semua path di bawah prefix 
 **Base URL contoh lokal:** `https://api-ebilling-service.test`  
 Ganti sesuai environment Anda.
 
+**Dokumentasi interaktif (OpenAPI, [dedoc/scramble](https://github.com/dedoc/scramble)):** `GET /docs/api` (UI), `GET /docs/api.json` (spesifikasi JSON). Isi ringkas juga ada di `config/scramble.php` (`info.description`).
+
 ---
 
 ## Ringkas multi-tenant

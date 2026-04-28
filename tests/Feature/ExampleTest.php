@@ -1,7 +1,5 @@
 <?php
 
-test('the application returns a successful response', function () {
-    $response = $this->get('/');
-
-    $response->assertStatus(200);
+test('root web tidak melayani konten (API-only)', function () {
+    $this->get('/')->assertNotFound();
 });

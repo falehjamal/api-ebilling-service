@@ -8,13 +8,26 @@ use App\Http\Requests\Api\LoginRequest;
 use App\Http\Resources\WargaResource;
 use App\Models\Legacy\Warga;
 use App\Models\WargaAccount;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class AuthController extends Controller
 {
+    /**
+     * Login pelanggan (multi-tenant). Token Sanctum ber-scope `account:{tenant}`.
+     *
+     * **Rate limit:** 5 permintaan per menit per IP.
+     *
+     * @unauthenticated
+     *
+     * @response array{token: string, warga: array<string, mixed>}
+     */
+    #[Response(401, description: 'Kredensial tidak valid (username/password, level bukan Pelanggan, atau status bukan 1).', type: 'array{message: string}')]
+    #[Response(422, description: 'Validasi gagal atau tabel akun legacy tidak ditemukan.', type: 'array{message: string, errors?: array<string, array<int, string>>}')]
+    #[Response(429, description: 'Terlalu banyak percobaan login.', type: 'array{message: string}')]
     public function login(LoginRequest $request, AuthenticateWarga $authenticateWarga): JsonResponse
     {
         $validated = $request->validated();
@@ -28,7 +41,7 @@ class AuthController extends Controller
         } catch (InvalidArgumentException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            ], SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         return response()->json([
@@ -37,6 +50,13 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Profil warga dari DB legacy (`tb_warga_{account}`).
+     *
+     * @response \App\Http\Resources\WargaResource
+     */
+    #[Response(401, description: 'Token tidak valid atau kedaluwarsa.', type: 'array{message: string}')]
+    #[Response(404, description: 'Baris warga tidak ada di legacy.', type: 'array{message: string}')]
     public function me(Request $request): JsonResponse|WargaResource
     {
         /** @var WargaAccount $user */
@@ -50,13 +70,19 @@ class AuthController extends Controller
         if ($warga === null) {
             return response()->json([
                 'message' => __('Data warga tidak ditemukan di sistem lama.'),
-            ], Response::HTTP_NOT_FOUND);
+            ], SymfonyResponse::HTTP_NOT_FOUND);
         }
 
         return new WargaResource($warga);
     }
 
-    public function logout(Request $request): Response
+    /**
+     * Logout: hapus token akses saat ini (Sanctum).
+     *
+     * @status 204
+     */
+    #[Response(401, description: 'Token tidak valid atau kedaluwarsa.', type: 'array{message: string}')]
+    public function logout(Request $request): SymfonyResponse
     {
         $user = $request->user();
         if ($user !== null) {

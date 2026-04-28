@@ -7,12 +7,23 @@ use App\Http\Requests\Api\IndexInstalasiPelangganBaruRequest;
 use App\Http\Resources\InstalasiPelangganBaruResource;
 use App\Models\Legacy\LaporanPelanggan;
 use App\Models\WargaAccount;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class InstalasiPelangganBaruController extends Controller
 {
+    /**
+     * Order/instalasi pelanggan baru (`tb_laporan_pelanggan`), filter jenis & status; `account` dari token.
+     *
+     * **Rate limit:** 60 permintaan per menit per IP.
+     *
+     * @response \Illuminate\Http\Resources\Json\AnonymousResourceCollection<int, \App\Http\Resources\InstalasiPelangganBaruResource>
+     */
+    #[Response(401, description: 'Tanpa token atau token tidak valid.', type: 'array{message: string}')]
+    #[Response(403, description: 'Token tidak memiliki scope tenant.', type: 'array{message: string}')]
+    #[Response(422, description: 'Validasi query (page, per_page).', type: 'array{message: string, errors?: array<string, array<int, string>>}')]
     public function index(IndexInstalasiPelangganBaruRequest $request): AnonymousResourceCollection|JsonResponse
     {
         /** @var WargaAccount $user */
@@ -22,7 +33,7 @@ class InstalasiPelangganBaruController extends Controller
         if (! $user->tokenCan('account:'.$account)) {
             return response()->json([
                 'message' => __('Akses ditolak.'),
-            ], Response::HTTP_FORBIDDEN);
+            ], SymfonyResponse::HTTP_FORBIDDEN);
         }
 
         $validated = $request->validated();
