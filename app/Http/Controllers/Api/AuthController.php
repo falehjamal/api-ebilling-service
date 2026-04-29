@@ -25,8 +25,8 @@ class AuthController extends Controller
      *
      * @response array{token: string, warga: array<string, mixed>}
      */
-    #[Response(401, description: 'Kredensial tidak valid (username/password, level bukan Pelanggan, atau status bukan 1).', type: 'array{message: string}')]
-    #[Response(422, description: 'Validasi gagal atau tabel akun legacy tidak ditemukan.', type: 'array{message: string, errors?: array<string, array<int, string>>}')]
+    #[Response(401, description: 'Kredensial tidak valid.', type: 'array{message: string}')]
+    #[Response(422, description: 'Validasi gagal atau akun tenant tidak ditemukan.', type: 'array{message: string, errors?: array<string, array<int, string>>}')]
     #[Response(429, description: 'Terlalu banyak percobaan login.', type: 'array{message: string}')]
     public function login(LoginRequest $request, AuthenticateWarga $authenticateWarga): JsonResponse
     {
@@ -51,12 +51,12 @@ class AuthController extends Controller
     }
 
     /**
-     * Profil warga dari DB legacy (`tb_warga_{account}`).
+     * Profil pengguna (pelanggan) yang sedang login.
      *
      * @response \App\Http\Resources\WargaResource
      */
     #[Response(401, description: 'Token tidak valid atau kedaluwarsa.', type: 'array{message: string}')]
-    #[Response(404, description: 'Baris warga tidak ada di legacy.', type: 'array{message: string}')]
+    #[Response(404, description: 'Profil tidak ditemukan.', type: 'array{message: string}')]
     public function me(Request $request): JsonResponse|WargaResource
     {
         /** @var WargaAccount $user */

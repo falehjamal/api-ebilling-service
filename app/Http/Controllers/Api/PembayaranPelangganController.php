@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 class PembayaranPelangganController extends Controller
 {
     /**
-     * Pembayaran pelanggan (`tb_iuran_{account}`), terpaginasi. Default filter: bulan kalender berjalan; override dengan `from`+`to` atau `bulan`.
+     * Daftar pembayaran pelanggan tenant Anda, terpaginasi. Default periode: bulan berjalan; override dengan `from`+`to` atau `bulan`.
      *
      * **Rate limit:** 60 permintaan per menit per IP.
      *
@@ -25,7 +25,7 @@ class PembayaranPelangganController extends Controller
      */
     #[Response(401, description: 'Tanpa token atau token tidak valid.', type: 'array{message: string}')]
     #[Response(403, description: 'Token tidak memiliki scope tenant.', type: 'array{message: string}')]
-    #[Response(404, description: 'Tabel tb_iuran_{account} tidak ada di legacy.', type: 'array{message: string}')]
+    #[Response(404, description: 'Data pembayaran tenant tidak tersedia.', type: 'array{message: string}')]
     #[Response(422, description: 'Validasi query (page, per_page, from, to, bulan).', type: 'array{message: string, errors?: array<string, array<int, string>>}')]
     public function index(IndexPembayaranPelangganRequest $request): AnonymousResourceCollection|JsonResponse
     {

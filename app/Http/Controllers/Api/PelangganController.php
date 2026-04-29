@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 class PelangganController extends Controller
 {
     /**
-     * Daftar pelanggan (`level = Pelanggan`) untuk tenant user, terpaginasi. `account` dari token, bukan query.
+     * Daftar pelanggan untuk tenant token Anda, terpaginasi. Parameter `account` di URL tidak dipakai.
      *
      * **Rate limit:** 60 permintaan per menit per IP.
      *
@@ -24,7 +24,7 @@ class PelangganController extends Controller
      */
     #[Response(401, description: 'Tanpa token atau token tidak valid.', type: 'array{message: string}')]
     #[Response(403, description: 'Token tidak memiliki scope tenant.', type: 'array{message: string}')]
-    #[Response(404, description: 'Tabel tb_warga_{account} tidak ada di legacy.', type: 'array{message: string}')]
+    #[Response(404, description: 'Data tenant tidak tersedia.', type: 'array{message: string}')]
     #[Response(422, description: 'Validasi query (page, per_page).', type: 'array{message: string, errors?: array<string, array<int, string>>}')]
     public function index(IndexPelangganRequest $request): AnonymousResourceCollection|JsonResponse
     {

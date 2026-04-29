@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 class InstalasiPelangganBaruController extends Controller
 {
     /**
-     * Order/instalasi pelanggan baru (`tb_laporan_pelanggan`), filter jenis & status; `account` dari token.
+     * Order, instalasi, atau registrasi baru yang relevan untuk tenant Anda; filter jenis dan status proses. Tenant dari token.
      *
      * **Rate limit:** 60 permintaan per menit per IP.
      *

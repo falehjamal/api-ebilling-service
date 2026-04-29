@@ -5,14 +5,14 @@ Ringkasan endpoint, header, body, dan contoh `curl`. Semua path di bawah prefix 
 **Base URL contoh lokal:** `https://api-ebilling-service.test`  
 Ganti sesuai environment Anda.
 
-**Dokumentasi interaktif (OpenAPI, [dedoc/scramble](https://github.com/dedoc/scramble)):** `GET /docs/api` (UI), `GET /docs/api.json` (spesifikasi JSON). Isi ringkas juga ada di `config/scramble.php` (`info.description`).
+**Dokumentasi interaktif (OpenAPI):** `GET /docs/api` (UI), `GET /docs/api.json` (spesifikasi JSON). Panduan ini (`docs/API.md`) berisi penjelasan lengkap dan contoh permintaan.
 
 ---
 
 ## Ringkas multi-tenant
 
-- **`account`**: kode tenant (hanya huruf, angka, `_`, `-`). Data warga dibaca dari tabel legacy **`tb_warga_{account}`** (contoh: `tb_warga_1114`). Data pembayaran/iuran dibaca dari **`tb_iuran_{account}`** (contoh: `tb_iuran_1114`).
-- **Login** hanya untuk **pelanggan**: kolom **`level`** harus persis **`Pelanggan`**, kolom **`status`** harus **`1`** (string, sesuai `where` di kode), plus `username` + `password` (plain text) cocok.
+- **`account`**: kode wilayah/tenant (hanya huruf, angka, `_`, `-`, maks. 64 karakter). Menentukan lingkup data yang dipakai bersama token Anda.
+- **Login** hanya untuk **akun pelanggan** yang diizinkan layanan: kombinasi `username` dan `password` harus valid; akun harus memenuhi syarat status pelanggan aktif sesuai kebijakan backend (bukan penyedia atau jenis user lain).
 - **Token**: Laravel Sanctum. Kirim **`Authorization: Bearer {token}`** untuk endpoint yang membutuhkan auth. Masa berlaku **geser (sliding)**: setiap request API yang valid memperpanjang token; **tanpa request dalam 24 jam** (default, bisa diubah lewat `SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES` / `config/sanctum.php`) token tidak dapat dipakai lagi — **login ulang** diperlukan.
 
 ---
@@ -34,14 +34,14 @@ Ganti sesuai environment Anda.
 | `GET` | `/api/health` | Tidak | Cek service hidup |
 | `POST` | `/api/login` | Tidak | Login |
 | `POST` | `/api/logout` | Bearer | Hapus token saat ini |
-| `GET` | `/api/me` | Bearer | Profil warga dari DB legacy |
-| `GET` | `/api/pelanggan` | Bearer | Daftar pelanggan (`level = Pelanggan`) tenant user, terpaginasi |
-| `GET` | `/api/instalasi-pelanggan-baru` | Bearer | Order/instalasi pelanggan baru (`tb_laporan_pelanggan`), terpaginasi |
-| `GET` | `/api/pembayaran-pelanggan` | Bearer | Pembayaran pelanggan (`tb_iuran_{account}`), terpaginasi |
-| `GET` | `/api/status-pelanggan` | Bearer | Status turunan pelanggan (`ACTIVE` / `SUSPENDED` / `DISMANTLE` / `UNKNOWN`) dari `tb_warga_{account}` |
+| `GET` | `/api/me` | Bearer | Profil pengguna (pelanggan) yang sedang login |
+| `GET` | `/api/pelanggan` | Bearer | Daftar pelanggan tenant Anda, terpaginasi |
+| `GET` | `/api/instalasi-pelanggan-baru` | Bearer | Daftar order/instalasi/registrasi baru yang relevan, terpaginasi |
+| `GET` | `/api/pembayaran-pelanggan` | Bearer | Daftar pembayaran pelanggan tenant Anda, terpaginasi |
+| `GET` | `/api/status-pelanggan` | Bearer | Status ringkas satu pelanggan (`ACTIVE` / `SUSPENDED` / `DISMANTLE` / `UNKNOWN`) |
 | `GET` | `/api/hello-world` | Bearer | Contoh endpoint terproteksi |
 
-**Rate limit:** login `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dan `GET /api/status-pelanggan` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
+**Rate limit:** `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dan `GET /api/status-pelanggan` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
 
 ---
 
@@ -82,8 +82,8 @@ curl -sS -X GET "https://api-ebilling-service.test/api/health" \
 | Field | Tipe | Wajib | Keterangan |
 |-------|------|--------|------------|
 | `account` | string | Ya | Regex: `^[A-Za-z0-9_-]+$`, max 64 |
-| `username` | string | Ya | Sesuai kolom `username` di `tb_warga_{account}` |
-| `password` | string | Ya | Sesuai kolom `password` di legacy (plain) |
+| `username` | string | Ya | Nama pengguna pelanggan untuk tenant `account` |
+| `password` | string | Ya | Kata sandi (teks biasa, sesuai yang terdaftar) |
 
 **Respons sukses `200`**
 
@@ -100,17 +100,17 @@ curl -sS -X GET "https://api-ebilling-service.test/api/health" \
 }
 ```
 
-Objek `warga` adalah subset field (whitelist); tidak termasuk `password`, `nik`, `foto_ktp`, dll.
+Objek `warga` hanya berisi field yang diizinkan untuk dikirim ke klien (bukan seluruh atribut akun).
 
-Field `token` dipasang dengan **`expires_at`** di database: default **24 jam** setelah aktifitas terakhir (setiap request API yang sukses memperpanjang masa berlaku). Variabel `.env`: `SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES` (menit).
+Masa berlaku token mengikuti kebijakan **sliding**; default sekitar **24 jam** tanpa aktivitas. Variabel `.env`: `SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES` (menit).
 
 **Respons gagal (contoh)**
 
 | HTTP | Kondisi |
 |------|---------|
 | `422` | Validasi gagal (format `account`, field kosong, dll.) |
-| `422` | Tabel `tb_warga_{account}` tidak ada di DB legacy (`errors.account`) |
-| `401` | Username/password salah, atau `level` bukan `Pelanggan`, atau `status` bukan `1` |
+| `422` | Tenant tidak dikenal / tidak tersedia (lihat respons, biasanya melalui `errors.account`) |
+| `401` | Username atau password salah, atau akun bukan pelanggan yang diizinkan |
 | `429` | Terlalu banyak percobaan login |
 
 **cURL**
@@ -135,7 +135,7 @@ Contoh respons validasi `422`:
 }
 ```
 
-Contoh tabel tidak ada (`422`):
+Contoh tenant tidak ditemukan (`422`):
 
 ```json
 {
@@ -170,7 +170,7 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 **Respons sukses `200`**  
-Body mengikuti `WargaResource` (biasanya dibungkus kunci `data`):
+Body berupa objek profil (biasanya dibungkus kunci `data`):
 
 ```json
 {
@@ -190,7 +190,7 @@ Body mengikuti `WargaResource` (biasanya dibungkus kunci `data`):
 
 **Respons `401`** — token hilang, kedaluwarsa, atau tidak valid.
 
-**Respons `404`** — baris warga tidak lagi ada di `tb_warga_{account}` di legacy.
+**Respons `404`** — profil tidak lagi tersedia untuk pengguna ini (pesan API mis.: *Data warga tidak ditemukan di sistem lama.*).
 
 **cURL**
 
@@ -206,7 +206,7 @@ curl -sS -X GET "https://api-ebilling-service.test/api/me" \
 
 ## 4. Daftar pelanggan (`/api/pelanggan`)
 
-Mengembalikan semua baris dengan **`level = Pelanggan`** di tabel legacy `tb_warga_{account}`, di mana **`account` diambil dari user token** (field `account` pada pengguna yang login), **bukan** dari query string — parameter `account` di URL diabaikan untuk keamanan multi-tenant.
+Mengembalikan pelanggan untuk **tenant yang sama dengan token Anda**. Parameter `account` di URL **diabaikan** — tenant selalu dari token (keamanan multi-tenant).
 
 **Request**
 
@@ -224,7 +224,7 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `page` | integer | Halaman, min `1` |
 | `per_page` | integer | Default `15`, min `1`, maks `100` |
 
-**Respons sukses `200`** — JSON terpaginasi Laravel (kumpulan `WargaResource` di `data`, plus `links` dan `meta`):
+**Respons sukses `200`** — JSON terpaginasi Laravel (`data`, `links`, `meta`):
 
 ```json
 {
@@ -254,7 +254,7 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 |------|---------|
 | `401` | Tanpa / token tidak valid |
 | `403` | Token tidak punya scope `account:{account}` (jarang, jika token dimanipulasi) |
-| `404` | Tabel `tb_warga_{account}` tidak ada di legacy untuk tenant user |
+| `404` | Data tenant tidak tersedia untuk pengguna ini (pesan API mis.: *Data tenant tidak ditemukan.*) |
 | `422` | `per_page` melebihi 100 atau validasi query gagal |
 
 **cURL**
@@ -271,13 +271,9 @@ curl -sS -G "https://api-ebilling-service.test/api/pelanggan" \
 
 ## 5. Daftar order/instalasi pelanggan baru (`/api/instalasi-pelanggan-baru`)
 
-Membaca baris dari tabel legacy **`tb_laporan_pelanggan`** (shared, satu tabel untuk semua tenant) dengan filter:
+Data order dan progres terkait **instalasi baru**, **survey baru**, atau **registrasi baru** untuk tenant Anda, dengan status yang belum dianggap selesai atau dibatalkan. **Tenant dari token**, bukan query.
 
-- **`account`**: nilai tenant diambil dari **user token** (bukan query string); parameter `account` di URL diabaikan.
-- **`jns_laporan`**: salah satu dari `Installasi Baru`, `Survey Baru`, `New Regist`.
-- **`status`**: bukan `Closed`, `Pemasangan Berhasil Dilakukan`, atau `Cancel`.
-
-Urutan default: **`waktu_pembuatan` DESC**.
+Urutan: pembuatan terbaru lebih dulu.
 
 **Request**
 
@@ -295,7 +291,7 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `page` | integer | Halaman, min `1` |
 | `per_page` | integer | Default `15`, min `1`, maks `100` |
 
-**Respons sukses `200`** — JSON terpaginasi Laravel; setiap item di `data` memuat **semua kolom** baris `tb_laporan_pelanggan` (mirror `SELECT *`), plus `links` dan `meta`:
+**Respons sukses `200`** — JSON terpaginasi; setiap elemen `data` memuat properti sesuai struktur data laporan (banyak field), plus `links` dan `meta`:
 
 ```json
 {
@@ -340,16 +336,16 @@ curl -sS -G "https://api-ebilling-service.test/api/instalasi-pelanggan-baru" \
 
 ## 6. Daftar pembayaran pelanggan (`/api/pembayaran-pelanggan`)
 
-Membaca baris dari tabel legacy **`tb_iuran_{account}`**, di mana **`account` diambil dari user token**, bukan dari query string (parameter `account` di URL diabaikan untuk keamanan multi-tenant).
+Daftar pembayaran untuk **tenant token Anda**; parameter `account` di URL **diabaikan**.
 
-**Default filter periode:** baris dengan `wkt_entry` pada **bulan kalender berjalan** (00:00:00 tanggal 1 sampai 23:59:59 tanggal terakhir bulan itu). Filter dapat di-override (saling eksklusif):
+**Filter waktu (default):** entri pada **bulan kalender berjalan**. Bisa diganti (saling eksklusif):
 
-- **`from` + `to`**: rentang tanggal inklusif (format `YYYY-MM-DD`), `wkt_entry` antara `from 00:00:00` dan `to 23:59:59`.
-- **`bulan`**: satu bulan penuh (format `YYYY-MM`).
+- **`from` + `to`**: rentang tanggal inklusif (`YYYY-MM-DD`), berdasarkan waktu pencatatan entri.
+- **`bulan`**: satu bulan penuh (`YYYY-MM`).
 
-Urutan default: **`id_ipl` DESC**.
+Urutan: **`id_ipl` menurun** (transaksi dengan identitas lebih besar lebih baru).
 
-**Kolom nomor urut (“No”) di UI:** hitung di client: untuk indeks baris ke-`i` (0-based) pada halaman saat ini, **No = `meta.from + i`** (pakai field `meta.from` dari respons terpaginasi Laravel).
+**Nomor urut di UI:** pada halaman saat ini, untuk indeks `i` (mulai 0): **No = `meta.from + i`**.
 
 **Request**
 
@@ -370,29 +366,29 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 | `to` | string `YYYY-MM-DD` | Akhir rentang (wajib bersama `from`; harus ≥ `from`; tidak boleh bersama `bulan`) |
 | `bulan` | string `YYYY-MM` | Satu bulan penuh (tidak boleh bersama `from`/`to`) |
 
-**Respons sukses `200`** — JSON terpaginasi Laravel; setiap item di `data` memuat field berikut:
+**Respons sukses `200`** — setiap item di `data` memuat field berikut:
 
-| Field JSON | Sumber kolom DB (`tb_iuran_{account}`) |
-|------------|----------------------------------------|
-| `id_ipl` | `id_ipl` |
-| `id_pelanggan` | `id_pelanggan` |
-| `nama_pelanggan` | `nama_warga` |
-| `nama_sales` | `nama_sales` |
-| `nama_pembayaran` | `nama_tipe` |
-| `nominal_harus_dibayar` | `harga` |
-| `nominal_pembayaran` | `jumlah_bayar` |
-| `status_pembayaran` | `status_transaksi` |
-| `alamat` | `alamat` |
-| `tlp` | `tlp` |
-| `lokasi` | `id_lokasi` |
-| `bukti_pembayaran` | `foto` |
-| `periode_pembayaran` | `bayar_bulan` |
-| `metode_pembayaran` | `nama_rekening` |
-| `waktu_entry` | `wkt_entry` |
-| `keterangan` | `keterangan` |
-| `metode_insentif` | `metode_insentif` |
-| `insentif` | `insentif_sales` |
-| `nominal_insentif` | `nominal_insentif` |
+| Field | Keterangan (bisnis) |
+|-------|---------------------|
+| `id_ipl` | Identitas unik baris pembayaran |
+| `id_pelanggan` | Kode/referensi pelanggan |
+| `nama_pelanggan` | Nama pelanggan |
+| `nama_sales` | Nama sales (jika ada) |
+| `nama_pembayaran` | Jenis/nama paket atau pembayaran |
+| `nominal_harus_dibayar` | Nominal yang seharusnya dibayar |
+| `nominal_pembayaran` | Nominal yang dibayarkan |
+| `status_pembayaran` | Status penyelesaian transaksi |
+| `alamat` | Alamat (jika tersedia) |
+| `tlp` | Telepon |
+| `lokasi` | Referensi lokasi |
+| `bukti_pembayaran` | Referensi bukti (jika ada) |
+| `periode_pembayaran` | Periode tagihan yang dibayar |
+| `metode_pembayaran` | Metode atau rekening pembayaran |
+| `waktu_entry` | Waktu entri transaksi |
+| `keterangan` | Catatan tambahan |
+| `metode_insentif` | Metode insentif (jika ada) |
+| `insentif` | Insentif terkait |
+| `nominal_insentif` | Nominal insentif |
 
 ```json
 {
@@ -435,7 +431,7 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 |------|---------|
 | `401` | Tanpa / token tidak valid |
 | `403` | Token tidak punya scope `account:{account}` |
-| `404` | Tabel `tb_iuran_{account}` tidak ada di legacy untuk tenant user |
+| `404` | Data pembayaran tenant tidak tersedia (pesan API mis.: *Data tenant tidak ditemukan.*) |
 | `422` | `per_page` melebihi 100, `from`/`to`/`bulan` tidak valid, atau kombinasi query tidak diizinkan |
 
 **cURL**
@@ -517,16 +513,18 @@ Setelah logout, token yang sama tidak boleh dipakai lagi (`401` pada `/api/me`).
 
 ## 9. Status pelanggan (`/api/status-pelanggan`)
 
-Mengembalikan **status turunan** satu pelanggan (baris `level = Pelanggan`) di `tb_warga_{account}` berdasarkan kolom **`status`** dan **`status_langganan`**. **`account` diambil dari token**, bukan query.
+Mengembalikan **satu pelanggan** (menggunakan `id_warga` dari daftar pelanggan, mis. `GET /api/pelanggan`) beserta **status ringkas** `status_pelanggan`. Nilai dihitung dari kombinasi **`status`** dan **`status_langganan`** pada respons (bukan detail implementasi server).
 
-**Pencocokan `status_langganan`** bersifat **case-insensitive** (nilai DB enum `On` / `Off` setara dengan aturan `on` / `off`).
+**Nilai `status_langganan`** dipadankan **tanpa membedakan huruf besar/kecil** (mis. `On` dan `on` setara).
 
-| `status_pelanggan` | Kondisi (setelah normalisasi) |
-|--------------------|------------------------------|
-| `ACTIVE` | `status = '1'` dan langganan `on` |
-| `SUSPENDED` | `status = '1'` dan langganan `off` |
-| `DISMANTLE` | `status = '0'` dan langganan `off` |
-| `UNKNOWN` | Kombinasi lain (mis. `status = '2'`, atau `status = '0'` dengan langganan `on`) |
+**Makna `status_pelanggan` (ringkas):**
+
+| Nilai | Uraian untuk klien |
+|-------|-------------------|
+| `ACTIVE` | Pelanggan dalam kondisi aktif berlangganan |
+| `SUSPENDED` | Pelanggan dianggap aktif namun langganan nonaktif / ditangguhkan |
+| `DISMANTLE` | Pelanggan tidak aktif dan langganan berhenti |
+| `UNKNOWN` | Kombinasi status tidak mengikuti pola di atas atau tidak dikenali |
 
 **Request**
 
@@ -541,7 +539,7 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 | Param | Tipe | Keterangan |
 |-------|------|------------|
-| `id_warga` | integer | Wajib, primary key baris di `tb_warga_{account}`; min `1` |
+| `id_warga` | integer | Wajib; identitas pelanggan (sesuai `id_warga` dari daftar pelanggan); min `1` |
 
 **Respons sukses `200`**
 
@@ -563,7 +561,7 @@ Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 |------|---------|
 | `401` | Tanpa / token tidak valid |
 | `403` | Token tidak punya scope `account:{account}` |
-| `404` | Tabel `tb_warga_{account}` tidak ada di legacy, atau tidak ada baris `Pelanggan` dengan `id_warga` tersebut |
+| `404` | Tenant tidak tersedia (*Data tenant tidak ditemukan.*) atau pelanggan tidak ada (*Pelanggan tidak ditemukan.*) |
 | `422` | `id_warga` tidak dikirim, bukan integer, atau bernilai kurang dari `1` |
 | `429` | Rate limit |
 
@@ -583,8 +581,8 @@ curl -sS -G "https://api-ebilling-service.test/api/status-pelanggan" \
 | Variabel | Keterangan |
 |----------|------------|
 | `APP_URL` | URL publik aplikasi |
-| `DB_*` | Database **lokal** (Sanctum, `warga_accounts`, cache, dll.) |
-| `DB_LEGACY_*` | Koneksi ke DB billing lama (`tb_warga_{account}`, `tb_iuran_{account}`, `tb_laporan_pelanggan`, dll.) |
+| `DB_*` | Database aplikasi (sesi, penyimpanan token, akun sinkron, cache, dll.) |
+| `DB_LEGACY_*` | Koneksi ke sistem data tagihan/organisasi yang menjadi sumber transaksi dan master pelanggan |
 | `SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES` | (Opsional) Berapa menit token API boleh tidak dipakai sebelum dianggap kedaluwarsa; default `1440` (24 jam). Setiap request API yang sukses memperpanjang masa berlaku. |
 
 ---
@@ -597,4 +595,4 @@ curl -sS -G "https://api-ebilling-service.test/api/status-pelanggan" \
 
 ---
 
-*Dokumen ini diselaraskan dengan kode di `routes/api.php` dan controller terkait (termasuk `StatusPelangganController`).*
+Dokumen ini menggambarkan endpoint publik di bawah prefix `/api`.

@@ -32,20 +32,20 @@ return [
         'description' => <<<'MD'
 # API e-Billing (Warga)
 
-Ringkasan untuk konsumen API. Semua path di bawah prefix **`/api`**. Dokumentasi lengkap dengan contoh `curl` ada di repositori: **`docs/API.md`**.
+Ringkasan untuk konsumen API. Semua path di bawah prefix **`/api`**.
 
-## Multi-tenant (legacy)
+## Multi-tenant
 
-- **`account`**: kode tenant (`tb_warga_{account}`, `tb_iuran_{account}`).
-- **Login**: hanya **Pelanggan** dengan `status = 1` (string), `username` + `password` (plain) cocok di legacy.
-- **Auth**: `Authorization: Bearer {token}` (Sanctum). Token **sliding**; tanpa request dalam jeda yang dikonfigurasi (`SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES`) token tidak dipakai lagi.
+- **`account`**: kode wilayah/tenant (huruf, angka, `_`, `-`). Menentukan lingkup data bersama token Anda.
+- **Login**: akun **pelanggan** dengan `username` + `password` yang valid; syarat status akun mengikuti kebijakan layanan.
+- **Auth**: `Authorization: Bearer {token}` (Laravel Sanctum). Token **sliding**; tanpa permintaan dalam jeda yang dikonfigurasi (`SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES`) token tidak dapat dipakai — login ulang.
 
 ## Rate limit (ringkas)
 
 | Endpoint | Batas |
 |----------|--------|
 | `POST /api/login` | 5 / menit / IP |
-| `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan` | 60 / menit / IP |
+| `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, `GET /api/status-pelanggan` | 60 / menit / IP |
 MD,
     ],
 

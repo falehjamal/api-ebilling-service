@@ -15,8 +15,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 class StatusPelangganController extends Controller
 {
     /**
-     * Status pelanggan turunan (ACTIVE / SUSPENDED / DISMANTLE / UNKNOWN) dari `status` dan `status_langganan` pada `tb_warga_{account}`.
-     * `account` diambil dari token.
+     * Status ringkas satu pelanggan (`ACTIVE`, `SUSPENDED`, `DISMANTLE`, `UNKNOWN`) dari kombinasi field `status` dan `status_langganan` pada respons. Tenant dari token; `id_warga` dari daftar pelanggan.
      *
      * **Rate limit:** 60 permintaan per menit per IP.
      *
@@ -24,7 +23,7 @@ class StatusPelangganController extends Controller
      */
     #[Response(401, description: 'Tanpa token atau token tidak valid.', type: 'array{message: string}')]
     #[Response(403, description: 'Token tidak memiliki scope tenant.', type: 'array{message: string}')]
-    #[Response(404, description: 'Tabel tb_warga_{account} tidak ada / pelanggan tidak ditemukan.', type: 'array{message: string}')]
+    #[Response(404, description: 'Data tenant tidak tersedia atau pelanggan tidak ditemukan.', type: 'array{message: string}')]
     #[Response(422, description: 'Validasi query (id_warga).', type: 'array{message: string, errors?: array<string, array<int, string>>}')]
     public function show(ShowStatusPelangganRequest $request): StatusPelangganResource|JsonResponse
     {
