@@ -38,9 +38,10 @@ Ganti sesuai environment Anda.
 | `GET` | `/api/pelanggan` | Bearer | Daftar pelanggan (`level = Pelanggan`) tenant user, terpaginasi |
 | `GET` | `/api/instalasi-pelanggan-baru` | Bearer | Order/instalasi pelanggan baru (`tb_laporan_pelanggan`), terpaginasi |
 | `GET` | `/api/pembayaran-pelanggan` | Bearer | Pembayaran pelanggan (`tb_iuran_{account}`), terpaginasi |
+| `GET` | `/api/status-pelanggan` | Bearer | Status turunan pelanggan (`ACTIVE` / `SUSPENDED` / `DISMANTLE` / `UNKNOWN`) dari `tb_warga_{account}` |
 | `GET` | `/api/hello-world` | Bearer | Contoh endpoint terproteksi |
 
-**Rate limit:** login `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, dan `GET /api/pembayaran-pelanggan` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
+**Rate limit:** login `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dan `GET /api/status-pelanggan` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
 
 ---
 
@@ -514,6 +515,69 @@ Setelah logout, token yang sama tidak boleh dipakai lagi (`401` pada `/api/me`).
 
 ---
 
+## 9. Status pelanggan (`/api/status-pelanggan`)
+
+Mengembalikan **status turunan** satu pelanggan (baris `level = Pelanggan`) di `tb_warga_{account}` berdasarkan kolom **`status`** dan **`status_langganan`**. **`account` diambil dari token**, bukan query.
+
+**Pencocokan `status_langganan`** bersifat **case-insensitive** (nilai DB enum `On` / `Off` setara dengan aturan `on` / `off`).
+
+| `status_pelanggan` | Kondisi (setelah normalisasi) |
+|--------------------|------------------------------|
+| `ACTIVE` | `status = '1'` dan langganan `on` |
+| `SUSPENDED` | `status = '1'` dan langganan `off` |
+| `DISMANTLE` | `status = '0'` dan langganan `off` |
+| `UNKNOWN` | Kombinasi lain (mis. `status = '2'`, atau `status = '0'` dengan langganan `on`) |
+
+**Request**
+
+```http
+GET /api/status-pelanggan?id_warga=1 HTTP/1.1
+Host: api-ebilling-service.test
+Accept: application/json
+Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Query (wajib)**
+
+| Param | Tipe | Keterangan |
+|-------|------|------------|
+| `id_warga` | integer | Wajib, primary key baris di `tb_warga_{account}`; min `1` |
+
+**Respons sukses `200`**
+
+```json
+{
+  "data": {
+    "id_warga": 1,
+    "id_pelanggan": "PLG-1",
+    "nama_warga": "Contoh",
+    "account": "1114",
+    "status": "1",
+    "status_langganan": "On",
+    "status_pelanggan": "ACTIVE"
+  }
+}
+```
+
+| HTTP | Kondisi |
+|------|---------|
+| `401` | Tanpa / token tidak valid |
+| `403` | Token tidak punya scope `account:{account}` |
+| `404` | Tabel `tb_warga_{account}` tidak ada di legacy, atau tidak ada baris `Pelanggan` dengan `id_warga` tersebut |
+| `422` | `id_warga` tidak dikirim, bukan integer, atau bernilai kurang dari `1` |
+| `429` | Rate limit |
+
+**cURL**
+
+```bash
+curl -sS -G "https://api-ebilling-service.test/api/status-pelanggan" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  --data-urlencode "id_warga=1"
+```
+
+---
+
 ## Konfigurasi server (.env)
 
 | Variabel | Keterangan |
@@ -528,9 +592,9 @@ Setelah logout, token yang sama tidak boleh dipakai lagi (`401` pada `/api/me`).
 ## Alur client singkat
 
 1. `POST /api/login` → simpan `token`.
-2. Panggil `GET /api/me`, `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dst. dengan header `Authorization: Bearer {token}`.
+2. Panggil `GET /api/me`, `GET /api/pelanggan`, `GET /api/status-pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dst. dengan header `Authorization: Bearer {token}`.
 3. `POST /api/logout` saat selesai (opsional).
 
 ---
 
-*Dokumen ini diselaraskan dengan kode di `routes/api.php` dan controller terkait.*
+*Dokumen ini diselaraskan dengan kode di `routes/api.php` dan controller terkait (termasuk `StatusPelangganController`).*

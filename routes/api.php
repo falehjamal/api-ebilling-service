@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\InstalasiPelangganBaruController;
 use App\Http\Controllers\Api\PelangganController;
 use App\Http\Controllers\Api\PembayaranPelangganController;
+use App\Http\Controllers\Api\StatusPelangganController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -30,6 +31,7 @@ Route::middleware(['auth:sanctum', 'refresh.sanctum.token'])->group(function () 
     Route::get('pelanggan', [PelangganController::class, 'index'])->middleware('throttle:60,1');
     Route::get('instalasi-pelanggan-baru', [InstalasiPelangganBaruController::class, 'index'])->middleware('throttle:60,1');
     Route::get('pembayaran-pelanggan', [PembayaranPelangganController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('status-pelanggan', [StatusPelangganController::class, 'show'])->middleware('throttle:60,1');
 
     Route::get('hello-world', /**
      * Contoh endpoint terproteksi (uji token).
