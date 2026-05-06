@@ -31,7 +31,6 @@ final class AuthenticateWarga
 
         $warga = Warga::forAccount($account)
             ->where('username', $username)
-            ->where('level', 'Pelanggan')
             ->where('status', '1')
             ->first();
 

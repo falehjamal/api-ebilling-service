@@ -82,7 +82,7 @@ curl -sS -X GET "https://api-ebilling-service.test/api/health" \
 | Field | Tipe | Wajib | Keterangan |
 |-------|------|--------|------------|
 | `account` | string | Ya | Regex: `^[A-Za-z0-9_-]+$`, max 64 |
-| `username` | string | Ya | Nama pengguna pelanggan untuk tenant `account` |
+| `username` | string | Ya | Nama pengguna untuk tenant `account` |
 | `password` | string | Ya | Kata sandi (teks biasa, sesuai yang terdaftar) |
 
 **Respons sukses `200`**
@@ -110,7 +110,7 @@ Masa berlaku token mengikuti kebijakan **sliding**; default sekitar **24 jam** t
 |------|---------|
 | `422` | Validasi gagal (format `account`, field kosong, dll.) |
 | `422` | Tenant tidak dikenal / tidak tersedia (lihat respons, biasanya melalui `errors.account`) |
-| `401` | Username atau password salah, atau akun bukan pelanggan yang diizinkan |
+| `401` | Username atau password salah, atau `status` akun tidak aktif (`status` ≠ `1`) |
 | `429` | Terlalu banyak percobaan login |
 
 **cURL**

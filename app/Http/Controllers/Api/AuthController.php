@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 class AuthController extends Controller
 {
     /**
-     * Login pelanggan (multi-tenant). Token Sanctum ber-scope `account:{tenant}`.
+     * Login warga (multi-tenant). Token Sanctum ber-scope `account:{tenant}`.
      *
      * **Rate limit:** 5 permintaan per menit per IP.
      *

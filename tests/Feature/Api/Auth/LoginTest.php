@@ -174,7 +174,7 @@ it('rate limits setelah 5 percobaan login', function () {
     ])->assertStatus(429);
 });
 
-it('menolak login jika level bukan Pelanggan', function () {
+it('mengizinkan login jika level bukan Pelanggan', function () {
     createLegacyWargaTableForAccount('1114', [
         [
             'username' => 'warga1',
@@ -189,7 +189,10 @@ it('menolak login jika level bukan Pelanggan', function () {
         'account' => '1114',
         'username' => 'warga1',
         'password' => 'rahasia',
-    ])->assertUnauthorized();
+    ])
+        ->assertOk()
+        ->assertJsonPath('warga.level', 'Admin')
+        ->assertJsonStructure(['token', 'warga']);
 });
 
 it('menolak login jika status bukan 1', function () {
