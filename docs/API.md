@@ -36,12 +36,13 @@ Ganti sesuai environment Anda.
 | `POST` | `/api/logout` | Bearer | Hapus token saat ini |
 | `GET` | `/api/me` | Bearer | Profil pengguna (pelanggan) yang sedang login |
 | `GET` | `/api/pelanggan` | Bearer | Daftar pelanggan tenant Anda, terpaginasi |
+| `GET` | `/api/lokasi` | Bearer | Daftar lokasi tenant Anda (`tb_lokasi`), terpaginasi |
 | `GET` | `/api/instalasi-pelanggan-baru` | Bearer | Daftar order/instalasi/registrasi baru yang relevan, terpaginasi |
 | `GET` | `/api/pembayaran-pelanggan` | Bearer | Daftar pembayaran pelanggan tenant Anda, terpaginasi |
 | `GET` | `/api/status-pelanggan` | Bearer | Status ringkas satu pelanggan (`ACTIVE` / `SUSPENDED` / `DISMANTLE` / `UNKNOWN`) |
 | `GET` | `/api/hello-world` | Bearer | Contoh endpoint terproteksi |
 
-**Rate limit:** `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dan `GET /api/status-pelanggan` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
+**Rate limit:** `POST /api/login` = **5** request per menit per IP. `GET /api/pelanggan`, `GET /api/lokasi`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dan `GET /api/status-pelanggan` = **60** request per menit per IP (throttle Laravel; nilai dapat disesuaikan di rute).
 
 ---
 
@@ -269,7 +270,90 @@ curl -sS -G "https://api-ebilling-service.test/api/pelanggan" \
 
 ---
 
-## 5. Daftar order/instalasi pelanggan baru (`/api/instalasi-pelanggan-baru`)
+## 5. Daftar lokasi (`/api/lokasi`)
+
+Data lokasi (`tb_lokasi`) untuk **tenant yang sama dengan token Anda**. Filter baris memakai kolom `account`. Parameter `account` di URL **diabaikan** — tenant selalu dari token.
+
+Urutan: **`id_lokasi` menurun** (ID lebih besar lebih baru).
+
+**Request**
+
+```http
+GET /api/lokasi?page=1&per_page=15 HTTP/1.1
+Host: api-ebilling-service.test
+Accept: application/json
+Authorization: Bearer 1|xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Query (opsional)**
+
+| Param | Tipe | Keterangan |
+|-------|------|------------|
+| `page` | integer | Halaman, min `1` |
+| `per_page` | integer | Default `15`, min `1`, maks `100` |
+
+**Respons sukses `200`** — JSON terpaginasi Laravel; setiap elemen `data` memuat minimal field berikut:
+
+| Field | Keterangan |
+|-------|------------|
+| `id_lokasi` | Identitas lokasi |
+| `account` | Tenant (angka, selaras dengan token) |
+| `nama_lokasi` | Nama lokasi |
+| `alamat_lokasi` | Alamat teks |
+| `tlp_lokasi` | Telepon lokasi |
+| `group_wa` | Grup WA (jika ada) |
+| `id_pic`, `nama_pic` | PIC lokasi |
+| `kode_lokasi` | Kode lokasi |
+| `account_wagw` | Akun terkait WA |
+| `insentif_sales`, `metode_insentif`, `nominal_insentif` | Insentif (jika ada) |
+| `filter_lokasi`, `jns_lokasi` | Filter / jenis lokasi |
+| `id_cabang`, `nama_cabang` | Cabang |
+| `id_referensi_corcab`, `nama_referensi_corcab` | Referensi Corcab |
+| `provinsi`, `kabupaten`, `kecamatan`, `kelurahan`, `rt`, `rw` | Wilayah |
+
+```json
+{
+  "data": [
+    {
+      "id_lokasi": 19968,
+      "account": 6720,
+      "nama_lokasi": "Renaldo Gunawan",
+      "alamat_lokasi": "Bukit Pamulang Indah …",
+      "tlp_lokasi": "087888911505",
+      "jns_lokasi": "POP"
+    }
+  ],
+  "links": { "first": "...", "last": "...", "prev": null, "next": null },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "per_page": 15,
+    "to": 1,
+    "total": 1
+  }
+}
+```
+
+| HTTP | Kondisi |
+|------|---------|
+| `401` | Tanpa / token tidak valid |
+| `403` | Token tidak punya scope `account:{account}` |
+| `422` | `per_page` melebihi 100 atau validasi query gagal |
+
+**cURL**
+
+```bash
+curl -sS -G "https://api-ebilling-service.test/api/lokasi" \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  --data-urlencode "per_page=15" \
+  --data-urlencode "page=1"
+```
+
+---
+
+## 6. Daftar order/instalasi pelanggan baru (`/api/instalasi-pelanggan-baru`)
 
 Data order dan progres terkait **instalasi baru**, **survey baru**, atau **registrasi baru** untuk tenant Anda, dengan status yang belum dianggap selesai atau dibatalkan. **Tenant dari token**, bukan query.
 
@@ -334,7 +418,7 @@ curl -sS -G "https://api-ebilling-service.test/api/instalasi-pelanggan-baru" \
 
 ---
 
-## 6. Daftar pembayaran pelanggan (`/api/pembayaran-pelanggan`)
+## 7. Daftar pembayaran pelanggan (`/api/pembayaran-pelanggan`)
 
 Daftar pembayaran untuk **tenant token Anda**; parameter `account` di URL **diabaikan**.
 
@@ -455,7 +539,7 @@ curl -sS -G "https://api-ebilling-service.test/api/pembayaran-pelanggan" \
 
 ---
 
-## 7. Hello World (uji token)
+## 8. Hello World (uji token)
 
 **Request**
 
@@ -485,7 +569,7 @@ curl -sS -X GET "https://api-ebilling-service.test/api/hello-world" \
 
 ---
 
-## 8. Logout
+## 9. Logout
 
 **URL:** `POST /api/logout`
 
@@ -511,7 +595,7 @@ Setelah logout, token yang sama tidak boleh dipakai lagi (`401` pada `/api/me`).
 
 ---
 
-## 9. Status pelanggan (`/api/status-pelanggan`)
+## 10. Status pelanggan (`/api/status-pelanggan`)
 
 Mengembalikan **satu pelanggan** (menggunakan `id_warga` dari daftar pelanggan, mis. `GET /api/pelanggan`) beserta **status ringkas** `status_pelanggan`. Nilai dihitung dari kombinasi **`status`** dan **`status_langganan`** pada respons (bukan detail implementasi server).
 
@@ -590,7 +674,7 @@ curl -sS -G "https://api-ebilling-service.test/api/status-pelanggan" \
 ## Alur client singkat
 
 1. `POST /api/login` → simpan `token`.
-2. Panggil `GET /api/me`, `GET /api/pelanggan`, `GET /api/status-pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dst. dengan header `Authorization: Bearer {token}`.
+2. Panggil `GET /api/me`, `GET /api/pelanggan`, `GET /api/lokasi`, `GET /api/status-pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, dst. dengan header `Authorization: Bearer {token}`.
 3. `POST /api/logout` saat selesai (opsional).
 
 ---

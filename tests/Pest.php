@@ -87,6 +87,47 @@ function createLegacyWargaTableForAccount(string $account, array $rows = []): vo
 }
 
 /**
+ * Tabel uji: tb_lokasi di connection legacy (DDL setara produksi).
+ */
+function createLegacyLokasiTable(array $rows = []): void
+{
+    $tableName = 'tb_lokasi';
+    Schema::connection('legacy')->dropIfExists($tableName);
+
+    Schema::connection('legacy')->create($tableName, function (Blueprint $table) {
+        $table->increments('id_lokasi');
+        $table->integer('account')->nullable();
+        $table->string('nama_lokasi', 50)->default('0');
+        $table->text('alamat_lokasi');
+        $table->string('tlp_lokasi', 50)->default('0');
+        $table->string('group_wa', 50)->nullable()->default('0');
+        $table->integer('id_pic')->nullable();
+        $table->string('nama_pic', 50)->nullable();
+        $table->integer('kode_lokasi')->nullable();
+        $table->integer('account_wagw')->nullable();
+        $table->string('insentif_sales', 50)->nullable();
+        $table->string('metode_insentif', 50)->nullable();
+        $table->string('nominal_insentif', 50)->nullable();
+        $table->string('filter_lokasi', 10)->default('Tidak');
+        $table->string('jns_lokasi', 255)->default('POP');
+        $table->string('id_cabang', 255)->nullable();
+        $table->string('nama_cabang', 255)->nullable();
+        $table->string('id_referensi_corcab', 10)->nullable();
+        $table->string('nama_referensi_corcab', 50)->nullable();
+        $table->string('provinsi', 100)->nullable();
+        $table->string('kabupaten', 100)->nullable();
+        $table->string('kecamatan', 100)->nullable();
+        $table->string('kelurahan', 100)->nullable();
+        $table->string('rt', 5)->nullable();
+        $table->string('rw', 5)->nullable();
+    });
+
+    foreach ($rows as $row) {
+        DB::connection('legacy')->table($tableName)->insert($row);
+    }
+}
+
+/**
  * Tabel uji: tb_laporan_pelanggan di connection legacy (sama connection dengan default saat testing).
  */
 function createLegacyLaporanPelangganTable(array $rows = []): void
