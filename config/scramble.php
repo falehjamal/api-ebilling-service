@@ -37,7 +37,7 @@ Ringkasan untuk konsumen API. Semua path di bawah prefix **`/api`**.
 ## Multi-tenant
 
 - **`account`**: kode wilayah/tenant (huruf, angka, `_`, `-`). Menentukan lingkup data bersama token Anda.
-- **Login**: akun **pelanggan** dengan `username` + `password` yang valid; syarat status akun mengikuti kebijakan layanan.
+- **Login**: `username` dan `password` harus cocok untuk tenant (`account`), dan **`status`** akun di sistem legacy harus **`1`** (aktif). **Semua level** pengguna (mis. Pelanggan, Admin) boleh login — akses ke data terbatasi oleh scope token **`account:{tenant}`**.
 - **Auth**: `Authorization: Bearer {token}` (Laravel Sanctum). Token **sliding**; tanpa permintaan dalam jeda yang dikonfigurasi (`SANCTUM_TOKEN_INACTIVITY_TTL_MINUTES`) token tidak dapat dipakai — login ulang.
 
 ## Rate limit (ringkas)
@@ -45,7 +45,7 @@ Ringkasan untuk konsumen API. Semua path di bawah prefix **`/api`**.
 | Endpoint | Batas |
 |----------|--------|
 | `POST /api/login` | 5 / menit / IP |
-| `GET /api/pelanggan`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, `GET /api/status-pelanggan` | 60 / menit / IP |
+| `GET /api/pelanggan`, `GET /api/lokasi`, `GET /api/instalasi-pelanggan-baru`, `GET /api/pembayaran-pelanggan`, `GET /api/status-pelanggan` | 60 / menit / IP |
 MD,
     ],
 

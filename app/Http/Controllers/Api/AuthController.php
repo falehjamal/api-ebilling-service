@@ -51,7 +51,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Profil pengguna (pelanggan) yang sedang login.
+     * Profil pengguna yang sedang login (multi-tenant).
      *
      * @response \App\Http\Resources\WargaResource
      */

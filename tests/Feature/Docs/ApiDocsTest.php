@@ -18,6 +18,9 @@ it('menyajikan spesifikasi OpenAPI JSON di /docs/api.json', function () {
         ->and($data['servers'][0]['url'] ?? '')->toEndWith('/api')
         ->and($data['paths']['/login'] ?? null)->toBeArray()
         ->and($data['paths']['/me'] ?? null)->toBeArray()
+        ->and($data['paths']['/lokasi'] ?? null)->toBeArray()
+        ->and($data['paths']['/lokasi']['get']['responses']['401'] ?? null)->toBeArray()
+        ->and($data['security'][0]['bearer'] ?? null)->toBeArray()
         ->and($data['components']['securitySchemes']['bearer'] ?? null)->toBeArray()
         ->and($data['components']['securitySchemes']['bearer']['type'] ?? null)->toBe('http')
         ->and($data['components']['securitySchemes']['bearer']['scheme'] ?? null)->toBe('bearer');
